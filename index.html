@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clarity AI - Legal Decoder</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Essential Libraries -->
+    <script src='https://unpkg.com/tesseract.js@5/dist/tesseract.min.js'></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.11.338/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                },
+            }
+        }
+    </script>
+    
+    <style>
+        body {
+            background-color: #f8fafc;
+            background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23dbeafe' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+        }
+        .dark body {
+            background-color: #030712;
+            background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%231e293b' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .spinner { display: inline-block; width: 24px; height: 24px; border: 3px solid rgba(255,255,255,.3); border-radius: 50%; border-top-color: #fff; animation: spin 1s ease-in-out infinite; }
+        ::-webkit-scrollbar { width: 8px; } ::-webkit-scrollbar-track { background: #e5e7eb; } .dark ::-webkit-scrollbar-track { background: #1f2937; } ::-webkit-scrollbar-thumb { background: #9ca3af; border-radius: 10px; } .dark ::-webkit-scrollbar-thumb { background: #4b5563; } ::-webkit-scrollbar-thumb:hover { background: #6b7280; } .dark ::-webkit-scrollbar-thumb:hover { background: #4b5563; }
+        .custom-radio:checked { background-image: url("data:image/svg+xml,%3csvg viewBox='0 0 16 16' fill='white' xmlns='http://www.w3.org/2000/svg'%3e%3ccircle cx='8' cy='8' r='3'/%3e%3c/svg%3e"); border-color: #4f46e5; background-color: #4f46e5; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .fade-in { animation: fadeIn 0.5s ease-in-out forwards; }
+        #drop-zone { border: 2px dashed #d1d5db; transition: all 0.3s ease-in-out; } .dark #drop-zone { border-color: #4a5568; }
+        #drop-zone.dragover { border-color: #4f46e5; background-color: #e0e7ff; } .dark #drop-zone.dragover { background-color: #3730a3; border-color: #6366f1;}
+        .prose { max-width: none; } .dark .prose { color: #d1d5db; } .prose strong { color: #1f2937; } .dark .prose strong { color: #f9fafb; }
+        #result { box-shadow: inset 0 2px 4px 0 rgb(0 0 0 / 0.05); } .dark #result { box-shadow: inset 0 2px 4px 0 rgb(0 0 0 / 0.2); }
+        .highlighted-text {
+            text-decoration: underline;
+            text-decoration-color: #818cf8;
+            text-decoration-thickness: 2px;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 transition-colors duration-300">
+
+    <div class="relative w-full max-w-6xl mx-auto my-8 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-6 md:p-10 border border-gray-200 dark:border-gray-700">
+        
+        <div class="absolute top-5 right-5">
+            <button id="theme-toggle" class="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none">
+                <svg id="theme-toggle-dark-icon" class="w-5 h-5 hidden" fill="currentColor" viewBox="0 0 20 20"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path></svg>
+                <svg id="theme-toggle-light-icon" class="w-5 h-5 hidden" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zM1 11a1 1 0 100-2H0a1 1 0 100 2h1zM4.59 15.41A1 1 0 014.59 14l.707-.707a1 1 0 011.414 1.414l-.707.707a1 1 0 01-1.414 0z" fill-rule="evenodd" clip-rule="evenodd"></path></svg>
+            </button>
+        </div>
+
+        <header class="text-center mb-8">
+            <div class="flex items-center justify-center gap-3">
+                <svg class="h-10 w-10 text-indigo-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 18v-5.25m0 0a6.01 6.01 0 001.5-.189m-1.5.189a6.01 6.01 0 01-1.5-.189m3.75 7.478a12.06 12.06 0 01-4.5 0m3.75 2.311a15.045 15.045 0 01-7.5 0C4.508 19.64 2.25 16.184 2.25 12c0-4.184 2.258-7.64 5.25-9.689m7.5 0A15.045 15.045 0 0012 2.25c-2.652 0-5.138 1.126-6.877 2.94" /></svg>
+                <h1 class="text-4xl md:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-500 dark:from-blue-400 dark:to-indigo-400">Clarity AI</h1>
+            </div>
+            <p class="text-gray-500 dark:text-gray-400 text-lg mt-2">From Complex Contracts to Clear Confidence.</p>
+        </header>
+
+        <main class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <!-- Left Column -->
+            <div class="md:pr-4">
+                <div id="drop-zone" class="relative rounded-lg p-6 text-center cursor-pointer bg-gray-50 dark:bg-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700 mb-4">
+                    <input type="file" id="file-upload" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" accept=".pdf,image/png,image/jpeg">
+                    <div class="flex flex-col items-center justify-center pointer-events-none">
+                        <svg class="w-10 h-10 text-gray-400 dark:text-gray-500 mb-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z" /></svg>
+                        <p class="font-semibold text-gray-700 dark:text-gray-300">Drop PDF/Image here or click to browse</p>
+                        <p id="file-name" class="text-sm text-gray-500 dark:text-gray-400 mt-1">Supports: PDF, PNG, JPG</p>
+                    </div>
+                </div>
+                
+                <div id="progress-bar-container" class="hidden my-4">
+                    <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
+                        <div id="progress-bar" class="bg-indigo-600 h-2.5 rounded-full" style="width: 0%"></div>
+                    </div>
+                    <p id="progress-label" class="text-sm text-center text-gray-500 dark:text-gray-400 mt-1"></p>
+                </div>
+
+                <div class="relative my-4"><div class="absolute inset-0 flex items-center"><div class="w-full border-t border-gray-300 dark:border-gray-600"></div></div><div class="relative flex justify-center text-sm"><span class="bg-white dark:bg-gray-800 px-2 text-gray-500 dark:text-gray-400">OR</span></div></div>
+
+                <div class="mb-4">
+                    <label for="legalInput" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Paste your legal text</label>
+                    <div id="editor-container" class="relative border border-gray-300 dark:border-gray-600 rounded-lg">
+    <!-- The border is now on the parent. The highlighter has no border. -->
+    <div id="highlighter" class="w-full p-4 whitespace-pre-wrap invisible absolute inset-0 pointer-events-none text-transparent"></div>
+    
+    <!-- The textarea still has a transparent border so it doesn't create a "double border" effect -->
+    <textarea id="legalInput" rows="8" class="w-full p-4 border border-transparent bg-transparent ..."></textarea>
+</div>
+                </div>
+
+                <div class="mb-6">
+                    <p class="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-3">Analysis Mode</p>
+                    <div class="grid grid-cols-1 gap-3">
+                        <label class="flex items-center p-3 border border-gray-300 dark:border-gray-600 rounded-lg has-[:checked]:bg-indigo-50 dark:has-[:checked]:bg-indigo-900/50 has-[:checked]:border-indigo-400 dark:has-[:checked]:border-indigo-500 cursor-pointer transition"><input type="radio" name="analysisMode" value="simplify" class="custom-radio h-4 w-4" checked><span class="ml-3 text-sm font-medium text-gray-900 dark:text-gray-200">Simplify & Find Red Flags</span></label>
+                        <label class="flex items-center p-3 border border-gray-300 dark:border-gray-600 rounded-lg has-[:checked]:bg-indigo-50 dark:has-[:checked]:bg-indigo-900/50 has-[:checked]:border-indigo-400 dark:has-[:checked]:border-indigo-500 cursor-pointer transition"><input type="radio" name="analysisMode" value="clause" class="custom-radio h-4 w-4"><span class="ml-3 text-sm font-medium text-gray-900 dark:text-gray-200">Analyze Specific Clause <span id="clause-hint" class="text-xs text-indigo-400 hidden">(Highlight text in the box above)</span></span></label>
+                        <label class="flex items-center p-3 border border-gray-300 dark:border-gray-600 rounded-lg has-[:checked]:bg-indigo-50 dark:has-[:checked]:bg-indigo-900/50 has-[:checked]:border-indigo-400 dark:has-[:checked]:border-indigo-500 cursor-pointer transition"><input type="radio" name="analysisMode" value="questions" class="custom-radio h-4 w-4"><span class="ml-3 text-sm font-medium text-gray-900 dark:text-gray-200">Generate Questions to Ask</span></label>
+                        <label class="flex items-center p-3 border border-gray-300 dark:border-gray-600 rounded-lg has-[:checked]:bg-indigo-50 dark:has-[:checked]:bg-indigo-900/50 has-[:checked]:border-indigo-400 dark:has-[:checked]:border-indigo-500 cursor-pointer transition"><input type="radio" name="analysisMode" value="email" class="custom-radio h-4 w-4"><span class="ml-3 text-sm font-medium text-gray-900 dark:text-gray-200">Draft Clarification Email</span></label>
+                    </div>
+                </div>
+
+                <button id="processBtn" class="w-full bg-indigo-600 text-white font-bold py-4 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-4 focus:ring-indigo-300 dark:focus:ring-indigo-800 flex items-center justify-center gap-2 transition-transform transform hover:scale-101">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 24 24" fill="currentColor"><path d="M14.067 2.122a2.25 2.25 0 0 1 2.478 1.01l.05.108 2.31 4.733a1.5 1.5 0 0 0 1.341.83h5.052a2.25 2.25 0 0 1 2.032 3.32l-.08.136-4.12 3.39a1.5 1.5 0 0 0-.533 1.636l.05.145 1.6 4.73a2.25 2.25 0 0 1-3.313 2.65l-.14-.09-4.16-3.385a1.5 1.5 0 0 0-1.766 0l-4.16 3.385a2.25 2.25 0 0 1-3.453-2.56l.05-.145 1.6-4.73a1.5 1.5 0 0 0-.482-1.78l-4.12-3.39a2.25 2.25 0 0 1 1.952-3.456h5.052a1.5 1.5 0 0 0 1.34-.83L11.53 3.24a2.25 2.25 0 0 1 2.537-1.118Z"/></svg>
+                    Analyze
+                </button>
+            </div>
+
+            <!-- Right Column -->
+            <div class="md:pl-4">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-200">AI Analysis</h2>
+                    <div class="flex gap-2">
+                        <button id="copyBtn" class="bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 text-xs font-medium py-1.5 px-3 rounded-md flex items-center gap-1.5 transition-colors duration-200"><svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 01-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 0 011.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 0 00-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 4.5l-3-3m0 0l-3 3m3-3v12" /></svg><span class="btn-text">Copy</span></button>
+                        <button id="downloadBtn" class="bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 text-xs font-medium py-1.5 px-3 rounded-md flex items-center gap-1.5 transition-colors duration-200"><svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg><span class="btn-text">Download</span></button>
+                    </div>
+                </div>
+                <div id="result" class="bg-gray-50 dark:bg-gray-900/50 p-6 border border-gray-200 dark:border-gray-700 rounded-lg min-h-[400px] text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-relaxed overflow-y-auto">Your AI analysis will appear here.</div>
+            </div>
+        </main>
+        
+        <footer class="text-center mt-8 pt-4 border-t border-gray-200 dark:border-gray-700"><p class="text-xs text-gray-500 dark:text-gray-400">Disclaimer: AI analysis may not be fully accurate. Always consult a qualified professional for legal advice.</p></footer>
+    </div>
+
+    <script>
+        // --- DOM Elements ---
+        const processBtn = document.getElementById('processBtn');
+        const legalInput = document.getElementById('legalInput');
+        const resultDiv = document.getElementById('result');
+        const copyBtn = document.getElementById('copyBtn');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const fileUpload = document.getElementById('file-upload');
+        const dropZone = document.getElementById('drop-zone');
+        const fileNameEl = document.getElementById('file-name');
+        const originalButtonHTML = processBtn.innerHTML;
+        const progressBarContainer = document.getElementById('progress-bar-container');
+        const progressBar = document.getElementById('progress-bar');
+        const progressLabel = document.getElementById('progress-label');
+        const themeToggle = document.getElementById('theme-toggle');
+        const highlighter = document.getElementById('highlighter');
+        const clauseHint = document.getElementById('clause-hint');
+
+        // --- API & Config ---
+        // !!! IMPORTANT: REPLACE 'YOUR_API_KEY_HERE' WITH YOUR ACTUAL GOOGLE AI STUDIO API KEY !!!
+        const API_KEY = 'AIzaSyDINnDxVqSChqEbD2m_LsNDFmhRyoXV3E4';
+        const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${API_KEY}`;
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.11.338/pdf.worker.min.js';
+
+        // --- Event Listeners & Initial Setup ---
+        document.addEventListener('DOMContentLoaded', () => {
+            const lightIcon = document.getElementById('theme-toggle-light-icon');
+            const darkIcon = document.getElementById('theme-toggle-dark-icon');
+            if (localStorage.getItem('color-theme') === 'dark' || (!('color-theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.classList.add('dark');
+                lightIcon.classList.remove('hidden');
+            } else {
+                darkIcon.classList.remove('hidden');
+            }
+            themeToggle.addEventListener('click', toggleTheme);
+        });
+
+        processBtn.addEventListener('click', handleProcessing);
+        copyBtn.addEventListener('click', handleCopy);
+        downloadBtn.addEventListener('click', handleDownload);
+        fileUpload.addEventListener('change', (e) => handleFile(e.target.files[0]));
+        
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(e => dropZone.addEventListener(e, preventDefaults, false));
+        ['dragenter', 'dragover'].forEach(e => dropZone.addEventListener(e, () => dropZone.classList.add('dragover'), false));
+        ['dragleave', 'drop'].forEach(e => dropZone.addEventListener(e, () => dropZone.classList.remove('dragover'), false));
+        dropZone.addEventListener('drop', (e) => handleFile(e.dataTransfer.files[0]), false);
+        function preventDefaults(e) { e.preventDefault(); e.stopPropagation(); }
+
+        document.querySelectorAll('input[name="analysisMode"]').forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                clauseHint.classList.toggle('hidden', e.target.value !== 'clause');
+                if (e.target.value !== 'clause') {
+                    highlighter.innerHTML = '';
+                } else {
+                    updateHighlight();
+                }
+            });
+        });
+
+        legalInput.addEventListener('input', () => {
+            highlighter.textContent = legalInput.value;
+            updateHighlight();
+        });
+        legalInput.addEventListener('scroll', () => {
+            highlighter.scrollTop = legalInput.scrollTop;
+            highlighter.scrollLeft = legalInput.scrollLeft;
+        });
+        document.addEventListener('selectionchange', updateHighlight);
+        
+        // --- Core Functions ---
+        async function handleFile(file) {
+            if (!file) return;
+            resetUI();
+            fileNameEl.textContent = `Reading: ${file.name}`;
+            setLoadingState('reading');
+            
+            try {
+                let text = '';
+                if (file.type === 'application/pdf') {
+                    text = await readPdf(file);
+                } else if (file.type.startsWith('image/')) {
+                    text = await readImage(file);
+                } else { throw new Error('Unsupported file. Please upload a PDF, PNG, or JPG.'); }
+                legalInput.value = text;
+                fileNameEl.textContent = `Successfully read ${file.name}`;
+            } catch (err) { showError(err.message); } finally { setLoadingState(false); }
+        }
+
+        async function handleProcessing() {
+            const mode = document.querySelector('input[name="analysisMode"]:checked').value;
+            let textToAnalyze = legalInput.value.trim();
+
+            if (mode === 'clause') {
+                const selection = window.getSelection().toString().trim();
+                if (selection && legalInput.value.includes(selection)) {
+                    textToAnalyze = `CONTEXT DOCUMENT:\n---\n${legalInput.value}\n---\n\nCLAUSE TO ANALYZE: "${selection}"`;
+                } else {
+                    showError("For 'Analyze Specific Clause' mode, you must highlight the text you want to analyze in the text box.");
+                    return;
+                }
+            }
+            
+            if (!textToAnalyze) { showError("Please paste text, upload a document, or highlight a clause first."); return; }
+            setLoadingState('analyzing');
+            const prompt = getPrompt(textToAnalyze, mode);
+
+            try {
+                const response = await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }) });
+                if (!response.ok) { const error = await response.json(); throw new Error(error.error.message || `API Error ${response.status}`); }
+                const data = await response.json();
+                if (data.candidates && data.candidates.length > 0) {
+                    renderMarkdown(data.candidates[0].content.parts[0].text);
+                } else { throw new Error("The AI returned an empty response. Please try again."); }
+            } catch (error) { showError(`An AI analysis error occurred: ${error.message}`); } finally { setLoadingState(false); }
+        }
+        
+        // --- File Reading Functions ---
+        async function readPdf(file) {
+            updateProgress(0, 'Reading PDF...');
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = async () => {
+                    try {
+                        const pdf = await pdfjsLib.getDocument(new Uint8Array(reader.result)).promise;
+                        let text = '';
+                        for (let i = 1; i <= pdf.numPages; i++) {
+                            const page = await pdf.getPage(i);
+                            const content = await page.getTextContent();
+                            text += content.items.map(item => item.str).join(' ');
+                            updateProgress(i / pdf.numPages, `Reading page ${i} of ${pdf.numPages}...`);
+                        } resolve(text);
+                    } catch (err) { reject(new Error('Could not read the PDF file. It might be corrupted or image-based.')); }
+                };
+                reader.readAsArrayBuffer(file);
+            });
+        }
+        
+        async function readImage(file) {
+            updateProgress(0, 'Warming up OCR engine...');
+            const worker = await Tesseract.createWorker('eng', 1, {
+                logger: m => {
+                    if (m.status === 'recognizing text') {
+                        updateProgress(m.progress, 'Recognizing text...');
+                    }
+                }
+            });
+            const { data: { text } } = await worker.recognize(file);
+            await worker.terminate();
+            updateProgress(1, 'OCR Complete!');
+            return text;
+        }
+
+        // --- Prompt Engineering ---
+        function getPrompt(legalText, mode) {
+            const basePrompt = `You are Clarity AI, an expert legal assistant. Your audience is an average person in India, not a lawyer. Your tone must be simple, clear, and reassuring. Do NOT provide legal advice, only explain the text. The provided text is:\n---\n${legalText}\n---`;
+            
+            switch(mode) {
+                case 'simplify': return `${basePrompt}\n\nTask: Simplify the entire document. Use Markdown. Sections: **📜 One-Sentence Summary**, **✅ Your Key Responsibilities & Rights** (in simple bullet points), **⚠️ Potential Red Flags** (explain WHY they are risky in simple terms). Explain it as you would to a 10th-grade student.`;
+                case 'clause': return `${basePrompt}\n\nTask: The user has provided a full document for context and highlighted a specific clause to analyze. Start your response by quoting the clause. Then, explain it in simple terms, state its likely purpose, and identify any potential risks. Use Markdown. Sections: **"🔍 Clause Under Review"**, **"🎯 What it Means"**, **"⚖️ Why it's There"**, **"⚠️ Potential Risks for You"**.`;
+                case 'questions': return `${basePrompt}\n\nTask: Generate a comprehensive list of critical questions the user MUST ask before signing. For each question, add a sub-bullet explaining **why this question is important**. Frame them as clear, direct questions. Use Markdown under the heading: **❓ Critical Questions to Ask**.`;
+                case 'email': return `${basePrompt}\n\nTask: Draft a polite, professional, and ready-to-send email to the other party asking for clarification on the most confusing clauses. Use placeholders like [Your Name] and [Recipient Name/Company Name]. The email must have a Subject line, a polite opening, numbered points for each clarification, and a professional closing. Structure it perfectly. Use Markdown under the heading: **📧 Draft Clarification Email**.`;
+                default: return basePrompt;
+            }
+        }
+        
+        // --- UI & Utility Functions ---
+        function toggleTheme() {
+            document.documentElement.classList.toggle('dark');
+            const isDark = document.documentElement.classList.contains('dark');
+            localStorage.setItem('color-theme', isDark ? 'dark' : 'light');
+            document.getElementById('theme-toggle-light-icon').classList.toggle('hidden', !isDark);
+            document.getElementById('theme-toggle-dark-icon').classList.toggle('hidden', isDark);
+        }
+
+        function setLoadingState(state) {
+            processBtn.disabled = !!state;
+            if (state === 'reading') {
+                resultDiv.innerHTML = `<div class="flex items-center justify-center h-full text-gray-500 dark:text-gray-400">Reading your document...</div>`;
+                processBtn.innerHTML = `<div class="spinner"></div> Reading File...`;
+            } else if (state === 'analyzing') {
+                processBtn.innerHTML = `<div class="spinner"></div> Analyzing...`;
+                resultDiv.innerHTML = `<div class="flex flex-col items-center justify-center h-full text-center"><div class="spinner !w-12 !h-12 !border-4 !border-indigo-200 !dark:border-indigo-700 !border-t-indigo-600"></div><p class="mt-4 text-gray-500 dark:text-gray-400">AI is analyzing...<br>This may take a moment.</p></div>`;
+            } else {
+                processBtn.innerHTML = originalButtonHTML;
+                progressBarContainer.classList.add('hidden');
+            }
+        }
+
+        function resetUI() {
+            legalInput.value = '';
+            fileUpload.value = '';
+            fileNameEl.textContent = 'Supports: PDF, PNG, JPG';
+            progressBarContainer.classList.add('hidden');
+            highlighter.innerHTML = '';
+        }
+        
+        function updateProgress(value, label) {
+            progressBarContainer.classList.remove('hidden');
+            progressBar.style.width = `${Math.round(value * 100)}%`;
+            progressLabel.textContent = label;
+        }
+
+        function showError(message) { resultDiv.innerHTML = `<div class="text-red-600 dark:text-red-400 p-4 border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 rounded-lg">${message}</div>`; }
+        
+        function renderMarkdown(text) {
+            // This regex-based approach is more robust for formatting.
+            let html = text
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') // Bold
+                .replace(/^\* (.*?)$/gm, '<li>$1</li>'); // Main bullet points
+
+            // Handle nested bullet points (e.g., for "Why it's important")
+            html = html.replace(/(\s+)- (.*?)$/gm, '<li class="ml-4">$2</li>');
+
+            // Headers with icons
+            html = html.replace(/^(📜|✅|⚠️|❓|📧|🔍|🎯|⚖️) (.*?):/gm, '<h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200 mt-4 mb-2">$1 $2</h3>');
+            
+            // Group list items into lists
+            html = html.replace(/(<li>.*<\/li>)/gs, (match) => `<ul class="list-disc list-outside pl-5 space-y-2">${match}</ul>`);
+            html = html.replace(/<\/ul>\s*<ul/g, '');
+
+            // Final cleanup
+            html = html.replace(/\n/g, '<br>').replace(/<\/ul><br>/g, '</ul>').replace(/<br><ul>/g, '<ul>');
+            
+            resultDiv.innerHTML = `<div class="fade-in prose dark:prose-invert max-w-none">${html}</div>`;
+        }
+
+        function updateHighlight() {
+            const mode = document.querySelector('input[name="analysisMode"]:checked').value;
+            if (mode !== 'clause') return;
+
+            const selection = window.getSelection();
+            const range = selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
+            
+            if (range && legalInput.contains(range.commonAncestorContainer)) {
+                const text = legalInput.value;
+                const start = legalInput.selectionStart;
+                const end = legalInput.selectionEnd;
+                
+                highlighter.innerHTML = 
+                    text.substring(0, start) +
+                    '<span class="highlighted-text">' +
+                    text.substring(start, end) +
+                    '</span>' +
+                    text.substring(end);
+            } else {
+                highlighter.innerHTML = legalInput.value;
+            }
+        }
+        
+        function handleCopy() {
+            const btnText = copyBtn.querySelector('.btn-text');
+            navigator.clipboard.writeText(resultDiv.innerText).then(() => {
+                btnText.textContent = 'Copied!';
+                setTimeout(() => { btnText.textContent = 'Copy'; }, 2000);
+            });
+        }
+        
+        function handleDownload() {
+            if (typeof window.jspdf === 'undefined') { showError("PDF library still loading. Please try again."); return; }
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            
+            doc.setFont('Helvetica', 'bold');
+            doc.setFontSize(18);
+            doc.text("Clarity AI - Legal Analysis", 15, 22);
+            doc.setFontSize(10);
+            doc.text(new Date().toLocaleString(), 15, 28);
+
+            doc.setFont('Helvetica', 'normal');
+            doc.setFontSize(11);
+            const textLines = doc.splitTextToSize(resultDiv.innerText, doc.internal.pageSize.getWidth() - 30);
+            doc.text(textLines, 15, 40);
+
+            doc.save('Clarity-AI_Analysis.pdf');
+        }
+    </script>
+</body>
+</html>
+
