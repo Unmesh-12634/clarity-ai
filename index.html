@@ -130,8 +130,31 @@
                 <div class="flex justify-between items-center mb-4">
                     <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-200">AI Analysis</h2>
                     <div class="flex gap-2">
-                        <button id="copyBtn" class="bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 text-xs font-medium py-1.5 px-3 rounded-md flex items-center gap-1.5 transition-colors duration-200"><svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 01-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 0 011.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 0 00-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 4.5l-3-3m0 0l-3 3m3-3v12" /></svg><span class="btn-text">Copy</span></button>
-                        <button id="downloadBtn" class="bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 text-xs font-medium py-1.5 px-3 rounded-md flex items-center gap-1.5 transition-colors duration-200"><svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg><span class="btn-text">Download</span></button>
+                    <button id="copyBtn" 
+    class="bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-xs font-medium py-1.5 px-3 rounded-md flex items-center gap-1.5 
+           border border-gray-200 dark:border-gray-600 shadow-sm               <!-- Base style with border & shadow -->
+           transition-all duration-200 ease-in-out                               <!-- Smooth transition for all effects -->
+           hover:bg-gray-50 dark:hover:bg-gray-600 hover:text-gray-900 dark:hover:text-white <!-- Hover: Subtle color change -->
+           hover:-translate-y-0.5 hover:shadow-lg                                <!-- Hover: Lifts the button up -->
+           active:scale-95 active:bg-gray-100                                    <!-- Active: Click effect -->
+           ">
+    <span id="copy-icon-wrapper">
+        <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 01-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 0 011.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 0 00-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 4.5l-3-3m0 0l-3 3m3-3v12" /></svg>
+    </span>
+    <span class="btn-text">Copy</span>
+</button>
+
+<button id="downloadBtn" 
+    class="bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-xs font-medium py-1.5 px-3 rounded-md flex items-center gap-1.5 
+           border border-gray-200 dark:border-gray-600 shadow-sm               <!-- Base style with border & shadow -->
+           transition-all duration-200 ease-in-out                               <!-- Smooth transition for all effects -->
+           hover:bg-gray-50 dark:hover:bg-gray-600 hover:text-gray-900 dark:hover:text-white <!-- Hover: Subtle color change -->
+           hover:-translate-y-0.5 hover:shadow-lg                                <!-- Hover: Lifts the button up -->
+           active:scale-95 active:bg-gray-100                                    <!-- Active: Click effect -->
+           ">
+    <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
+    <span class="btn-text">Download</span>
+</button>
                     </div>
                 </div>
                 <div id="result" class="bg-gray-50 dark:bg-gray-900/50 p-6 border border-gray-200 dark:border-gray-700 rounded-lg min-h-[400px] text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-relaxed overflow-y-auto">Your AI analysis will appear here.</div>
@@ -391,12 +414,23 @@
         }
         
         function handleCopy() {
-            const btnText = copyBtn.querySelector('.btn-text');
-            navigator.clipboard.writeText(resultDiv.innerText).then(() => {
-                btnText.textContent = 'Copied!';
-                setTimeout(() => { btnText.textContent = 'Copy'; }, 2000);
-            });
-        }
+    const btnText = copyBtn.querySelector('.btn-text');
+    const iconWrapper = document.getElementById('copy-icon-wrapper');
+    const originalIcon = iconWrapper.innerHTML;
+    const checkIcon = `<svg class="w-4 h-4 text-green-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>`;
+
+    navigator.clipboard.writeText(resultDiv.innerText).then(() => {
+        btnText.textContent = 'Copied!';
+        iconWrapper.innerHTML = checkIcon;
+        copyBtn.classList.add('text-green-500'); // Optional: make text green
+
+        setTimeout(() => {
+            btnText.textContent = 'Copy';
+            iconWrapper.innerHTML = originalIcon;
+            copyBtn.classList.remove('text-green-500'); // Revert text color
+        }, 2000);
+    });
+}
         
         function handleDownload() {
             if (typeof window.jspdf === 'undefined') { showError("PDF library still loading. Please try again."); return; }
